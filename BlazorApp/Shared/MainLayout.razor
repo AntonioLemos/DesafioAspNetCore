@@ -1,0 +1,45 @@
+﻿@inherits LayoutComponentBase
+@using BlazorApp.Data
+@using BlazorApp.Models
+@inject NavigationManager _navManager
+@inject ILocalStorageService Storage
+
+<style>
+    p {
+        margin-bottom: 0rem;
+    }
+</style>
+
+<div class="sidebar">
+    <NavMenu />
+</div>
+
+<div class="main">
+    <div class="top-row px-5">
+        <p>Olá, @user.NomeUser</p> <a @onclick="@((e) => LogOut())" style="cursor:pointer">logout</a>
+    </div>
+
+    <div class="content px-4">
+        @Body
+    </div>
+</div>
+
+@code{
+    public User user = new User();
+    protected override async Task OnInitializedAsync()
+    {
+        user = await Storage.GetItem("USER");
+        if (user == null || string.IsNullOrEmpty(user.Token))
+        {
+            _navManager.NavigateTo("/login", forceLoad: true);
+        }
+    }
+
+    private async Task LogOut()
+    {
+        await Storage.RemoveItem("USER");
+        _navManager.NavigateTo("/login", forceLoad: true);
+    }
+
+}
+

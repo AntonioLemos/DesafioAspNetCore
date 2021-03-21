@@ -1,0 +1,69 @@
+﻿@using System;
+@using System.Globalization;
+@using BlazorApp.Models
+@using BlazorApp.Data
+@using Newtonsoft.Json
+@inject IUserService UserService
+@inject NavigationManager NavManager
+
+<EditForm Model="@user" OnValidSubmit="@RegisterUser">
+    <h1>Create Account</h1>
+    @if (loginBtn)
+    {
+        <p><em>Loading...</em></p>
+    }
+    <p>
+        @message
+    </p>
+    <label>Nome </label>
+    <input type="text" @bind="@user.NomeUser" @oninput="@((e) => { user.NomeUser = (string)e.Value; })" />
+    <label>Documento </label>
+    <input type="number" @bind="@user.DocumentUser" @oninput="@((e) => { user.DocumentUser=(string)e.Value; })" />
+    <label>Data Nascimento </label>
+    <input type="date" @bind="@user.DataNascimento" placeholder="Data Nascimento" />
+    <label>UF </label>
+    <select @bind="@user.Uf" spellcheck="false">
+        <option value="@user.Uf" selected>@user.Uf</option>
+        @foreach (var estado in @listaEstados)
+        {
+            <option value="@estado">@estado</option>
+        }
+    </select>
+    <button>Sign Up</button>
+</EditForm>
+@code {
+    private User user { get; set; } = new User();
+    private string message { get; set; } = "";
+    private bool loginBtn;
+    private List<string> listaEstados = new List<string>() {
+        "", "AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        user.DataNascimento = new DateTime(DateTime.Now.Year, DateTime.Now.Month, DateTime.Now.Day);
+    }
+
+    protected async Task RegisterUser()
+    {
+        loginBtn = true;
+        message = "";
+        if (!string.IsNullOrEmpty(user.NomeUser) && !string.IsNullOrEmpty(user.DocumentUser)
+            && !string.IsNullOrEmpty(user.Uf))
+        {
+            dynamic response = await UserService.Create(user);
+
+            if ((string)response["message"] == "Ok")
+            {
+                NavManager.NavigateTo("/index", forceLoad: true);
+            }
+            else
+                this.message = response.message.ToString();
+        }
+        else
+        {
+            this.message = "Preencha corretamente os campos.";
+        }
+        loginBtn = false;
+    }
+}

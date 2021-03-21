@@ -1,0 +1,68 @@
+﻿@using BlazorApp.Data
+@inject IUserService UserService
+@inject NavigationManager NavManager
+
+<div class="modal @ModalClass" tabindex="-1" role="dialog" style="display:@ModalDisplay">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Deletar Usuário</h5>
+                @if (loginBtn)
+                {
+                    <p><em>Loading...</em></p>
+                }
+                <p>
+                    @message
+                </p>
+            </div>
+            <div class="modal-body">
+                <p>Deseja deletar o usuario: @nomeUser</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary"  @onclick="() => DeleteUser()">Confirmar</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick="() => Close()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+@if (ShowBackdrop)
+{
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+    public Guid Guid = Guid.NewGuid();
+    public string ModalDisplay = "none;";
+    public string ModalClass = "";
+    public string nomeUser = "";
+    public int idUser;
+    public bool ShowBackdrop = false;
+    private string message { get; set; } = "";
+    private bool loginBtn { get; set; } = false;
+
+    public void Open()
+    {
+        ModalDisplay = "block;";
+        ModalClass = "Show";
+        ShowBackdrop = true;
+        StateHasChanged();
+    }
+
+    public void Close()
+    {
+        ModalDisplay = "none";
+        ModalClass = "";
+        ShowBackdrop = false;
+        StateHasChanged();
+    }
+
+    private async Task DeleteUser()
+    {
+        dynamic response = await UserService.Delete(idUser);
+
+        if ((string)response["message"] == "Ok")
+            NavManager.NavigateTo("/index", forceLoad: true);
+        else
+            this.message = response.message.ToString();
+    }
+}

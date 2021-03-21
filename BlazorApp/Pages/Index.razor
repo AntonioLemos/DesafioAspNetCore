@@ -1,0 +1,227 @@
+﻿@page "/index"
+@using System;
+@using BlazorApp.Models
+@using BlazorApp.Data
+@using Newtonsoft.Json
+@inject IUserService UserService
+@inject NavigationManager NavManager
+<style>
+    button {
+        border-radius: 20px;
+        border: 1px solid rgb(5, 39, 103);
+        color: #fff9f9;
+        font-size: 12px;
+        font-weight: bold;
+        padding: 5px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        transition: transform 80ms ease-in;
+        background-image: linear-gradient( 180deg, rgb(5, 39, 103) 0%, #3a0647 70%);
+    }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        button:focus {
+            outline: none;
+        }
+
+        button.ghost {
+            background-color: transparent;
+            border-color: #FFFFFF;
+        }
+
+    input, select {
+        border: 1px solid rgb(5, 39, 103);
+        font-size: 12px;
+        font-weight: bold;
+        transition: transform 80ms ease-in;
+    }
+
+        /* Chrome, Safari, Edge, Opera */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        /* Firefox */
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+</style>
+<h2>Usuários</h2>
+<h4>Buscar Usuarios</h4>
+<EditForm Model="@userSearch" OnValidSubmit="@Search">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>UF</th>
+                <th>Pesquisa</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>
+                    <input type="number" @bind="@userSearch.Id" spellcheck="false" @oninput="@((e) => { userSearch.Id = CheckValueNumber((string)e.Value); })" placeholder="Id" />
+                </td>
+                <td>
+                    <select @bind="@userSearch.Uf" spellcheck="false">
+                        @foreach (var estado in @listaEstados)
+                        {
+                            <option value="@estado">@estado</option>
+                        }
+                    </select>
+                </td>
+                <td><button type="submit">Pesquisar</button></td>
+            </tr>
+        </tbody>
+    </table>
+</EditForm>
+<h4>Lista Usuarios</h4>
+<p>Esse é um exemplo.</p>
+@if (loginBtn)
+{
+    <p><em>Loading...</em></p>
+}
+<p>
+    @message
+</p>
+@if (users == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+@if (users.Length < 1)
+{
+    <p><em>Nenhum usuário encontrado.</em></p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Id</th>
+                <th>Nome</th>
+                <th>Documento</th>
+                <th>Data Nascimento</th>
+                <th>UF</th>
+                <th>Editar</th>
+                <th>Excluir</th>
+            </tr>
+        </thead>
+
+        <tbody>
+
+            @foreach (var user in users)
+            {
+
+                <tr>
+                    <td>@user.Id</td>
+                    <td>
+                        <input type="text" @bind="@user.NomeUser" @oninput="@((e) => { user.NomeUser = (string)e.Value; })" placeholder="Nome" />
+                    </td>
+                    <td>
+                        <input type="number" maxlength="11" @bind="@user.DocumentUser" readonly="readonly" />
+                    </td>
+                    <td>
+                        <input type="date" @bind="@user.DataNascimento" @oninput="@((e) => { user.DataNascimento = (DateTime)e.Value; })" placeholder="Data Nascimento" />
+                    </td>
+                    <td>
+                        <select @bind="@user.Uf" spellcheck="false">
+                            <option value="@user.Uf" selected>@user.Uf</option>
+                            @foreach (var estado in @listaEstados)
+                            {
+                                <option value="@estado">@estado</option>
+                            }
+                        </select>
+                    </td>
+                    <td><button type="button" @onclick="@((e) => { EditUser(user.Id); })">Editar</button></td>
+                    @{
+                        if (@user.Id != this.userLogon.Id)
+                        {
+                            <td><button type="button" @onclick="@((e) => { Modal.Open(); DeleteUser(user.Id);  })">Excluir</button></td>
+                        }
+                        else
+                        {
+                            <td><button type="button">Excluir</button></td>
+                        }
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+<ModalComponent @ref="Modal"></ModalComponent>
+@code {
+    private ModalComponent Modal { get; set; }
+    private User[] users { get; set; } = new List<User>().ToArray();
+    private User userLogon { get; set; } = new User();
+    public User userSearch { get; set; } = new User();
+    private string message { get; set; } = "";
+    private bool loginBtn { get; set; } = false;
+
+    private List<string> listaEstados = new List<string>() {
+        "", "AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"
+    };
+    protected override async Task OnInitializedAsync()
+    {
+        userLogon = await UserService.GetUserLogon();
+        await Search();
+    }
+
+    private async Task Search()
+    {
+        users = null;
+        var response = await UserService.GetUsers(userSearch);
+        users = JsonConvert.DeserializeObject<User[]>(response["users"].ToString());
+        if (users == null)
+            users = new List<User>().ToArray();
+    }
+
+    private async Task EditUser(int idUser)
+    {
+        loginBtn = true;
+        message = "";
+        var userEdit = users.Where(x => x.Id == idUser).FirstOrDefault();
+        if (!string.IsNullOrEmpty(userEdit.NomeUser)
+        && !string.IsNullOrEmpty(userEdit.Uf))
+        {
+            dynamic response = await UserService.Edit(userEdit);
+
+            if ((string)response["message"] == "Ok")
+                NavManager.NavigateTo("/index", forceLoad: true);
+            else
+                this.message = response.message.ToString();
+        }
+        else
+        {
+            this.message = "Preencha corretamente os campos.";
+        }
+    }
+
+    private async Task DeleteUser(int idUser)
+    {
+        loginBtn = true;
+        message = "";
+        var deleteUser = users.Where(x => x.Id == idUser).FirstOrDefault();
+        Modal.nomeUser = deleteUser.NomeUser;
+        Modal.idUser = deleteUser.Id;
+    }
+
+    private int CheckValueNumber(string valor)
+    {
+        try
+        {
+            return Convert.ToInt32(valor);
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+}
+
+

@@ -1,0 +1,51 @@
+﻿@using BlazorApp.Models
+@using BlazorApp.Data
+@using Newtonsoft.Json;
+@inject IUserService UserService
+@inject NavigationManager NavManager
+
+<EditForm Model="@user" OnValidSubmit="@loginUser">
+    <h1>Sign in</h1>
+    @if (loginBtn)
+    {
+        <p><em>Loading...</em></p>
+    }
+    <p>
+        @message
+    </p>
+    <label>Nome </label>
+
+    <input type="text" @bind="@user.NomeUser" @oninput="@((e) => { user.NomeUser=(string)e.Value;})" />
+    <label>Documento </label>
+
+    <input type="number" maxlength="11" @bind="@user.DocumentUser" @oninput="@((e) => { user.DocumentUser=(string)e.Value; })" />
+
+    <button>Sign In</button>
+</EditForm>
+@code {
+    private User user { get; set; } = new User();
+    private string message { get; set; } = "";
+    private bool loginBtn { get; set; } = false;
+
+    protected async Task loginUser()
+    {
+        loginBtn = true;
+        message = "";
+        if (!string.IsNullOrEmpty(user.NomeUser) && !string.IsNullOrEmpty(user.DocumentUser))
+        {
+            dynamic response = await UserService.Login(user);
+
+            if ((string)response["message"] == "Ok")
+            {
+                NavManager.NavigateTo("/index", forceLoad: true);
+            }
+            else
+                this.message = response.message.ToString();
+        }
+        else
+        {
+            this.message = "Preencha corretamente os campos.";
+        }
+        loginBtn = false;
+    }
+}
